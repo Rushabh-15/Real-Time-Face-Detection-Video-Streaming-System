@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.api.v1.router import api_router
 from app.config import Settings, get_settings
 
 
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     _configure_cors(app, settings)
+    app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
     return app
 
