@@ -14,19 +14,32 @@ from loguru import logger
 
 from app.api.v1.router import api_router
 from app.config import Settings, get_settings
+from app.services.detector import FaceDetector
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Startup/shutdown hooks. Stateful services (DB engine, mediapipe model)
-    will be wired in here as we add them."""
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Startup/shutdown hooks.
+
+    Constructs the long-lived FaceDetector once and stores it on
+    `app.state` so the WS handler can reuse it across all connections.
+    Closes the detector on shutdown to release the TFLite graph cleanly.
+    """
     settings = get_settings()
     logger.info(
         f"starting face-detect-stream backend "
         f"(env={settings.APP_ENV}, log_level={settings.LOG_LEVEL})"
     )
-    yield
-    logger.info("shutting down face-detect-stream backend")
+
+    detector = FaceDetector.from_settings(settings)
+    app.state.detector = detector
+    logger.info("face detector initialized")
+
+    try:
+        yield
+    finally:
+        detector.close()
+        logger.info("face detector closed; backend shutdown complete")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
