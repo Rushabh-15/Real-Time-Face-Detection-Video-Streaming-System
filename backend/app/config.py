@@ -7,10 +7,10 @@ exist as far as the app is concerned.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Repo root: backend/app/config.py -> backend/app -> backend -> repo root
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -27,8 +27,10 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # ---- CORS ----
-    # CSV in env, list in code. No "*" allowed in production (enforced in main.py).
-    BACKEND_CORS_ORIGINS: list[str] = Field(default_factory=list)
+    # CSV in env, list in code. NoDecode bypasses pydantic-settings' default
+    # JSON-decoding of complex types so our `field_validator` below runs on
+    # the raw string. No "*" allowed in production (enforced in main.py).
+    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -39,7 +41,6 @@ class Settings(BaseSettings):
 
     # ---- Face detection (mediapipe) ----
     DETECTION_MIN_CONFIDENCE: float = Field(default=0.5, ge=0.0, le=1.0)
-    DETECTION_MODEL_SELECTION: Literal[0, 1] = 0
 
     # ---- ROI persistence ----
     ROI_SAMPLE_EVERY_N_FRAMES: int = Field(default=5, ge=1)
