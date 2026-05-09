@@ -1,49 +1,15 @@
 """Unit tests for the face detection service.
 
-Loads a face JPEG fixture and verifies BlazeFace detects it. The detector
-fixture is module-scoped so the ~1.5s TFLite warmup happens once for the
-whole file.
+Loads a face JPEG fixture and verifies BlazeFace detects it. The
+`detector` and `face_image` fixtures live in tests/conftest.py — the
+detector is session-scoped so the ~1.5s TFLite warmup is amortized
+across all test files.
 """
-
-from pathlib import Path
-from collections.abc import Iterator
 
 import numpy as np
 import pytest
 
 from app.services.detector import BBox, FaceDetector
-from app.services.drawing import decode_jpeg
-
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-FACE_JPEG_PATH = FIXTURES_DIR / "face.jpg"
-
-
-# ---------- fixtures ----------
-
-
-@pytest.fixture(scope="module")
-def detector() -> Iterator[FaceDetector]:
-    """One detector for the whole module — TFLite warmup amortized."""
-    d = FaceDetector(min_confidence=0.5)
-    try:
-        yield d
-    finally:
-        d.close()
-
-
-@pytest.fixture
-def face_image() -> np.ndarray:
-    """Decoded RGB array of the bundled face fixture.
-
-    Skips dependent tests with a clear message if the fixture is missing,
-    so tests that don't need a real face still run.
-    """
-    if not FACE_JPEG_PATH.exists():
-        pytest.skip(
-            f"face fixture missing at {FACE_JPEG_PATH}. "
-            "Generate one with the resize command in tests/fixtures setup."
-        )
-    return decode_jpeg(FACE_JPEG_PATH.read_bytes())
 
 
 # ---------- happy path: detection on a real face ----------
