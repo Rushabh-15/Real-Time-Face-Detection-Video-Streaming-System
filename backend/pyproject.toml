@@ -90,6 +90,7 @@ target-version = ["py311"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["."]            # rootdir (= backend/) on sys.path so tests can import `app`
 asyncio_mode = "auto"
 addopts = [
     "-ra",
