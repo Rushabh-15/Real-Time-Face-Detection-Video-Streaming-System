@@ -15,15 +15,17 @@ from loguru import logger
 from app.api.v1.router import api_router
 from app.config import Settings, get_settings
 from app.services.detector import FaceDetector
+from app.services.roi_writer import roi_writer
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup/shutdown hooks.
 
-    Constructs the long-lived FaceDetector once and stores it on
-    `app.state` so the WS handler can reuse it across all connections.
-    Closes the detector on shutdown to release the TFLite graph cleanly.
+    Constructs long-lived resources (FaceDetector + ROI write-behind
+    worker) on startup and tears them down in reverse order on shutdown.
+    Each resource gets its own try/finally so a later startup failure
+    can't leak earlier ones.
     """
     settings = get_settings()
     logger.info(
@@ -36,7 +38,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("face detector initialized")
 
     try:
-        yield
+        await roi_writer.start()
+        logger.info("roi_writer started")
+        try:
+            yield
+        finally:
+            await roi_writer.stop()
+            logger.info("roi_writer stopped")
     finally:
         detector.close()
         logger.info("face detector closed; backend shutdown complete")
