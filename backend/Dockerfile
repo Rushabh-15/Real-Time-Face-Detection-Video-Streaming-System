@@ -47,6 +47,8 @@ WORKDIR /app
 
 # Copy the installed Python prefix from the builder, then app source.
 COPY --from=builder /install /install
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app alembic ./alembic
 COPY --chown=app:app app/ ./app/
 
 USER app
