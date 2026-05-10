@@ -52,6 +52,8 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://face_app:change_me_in_real_env"
         "@localhost:5432/face_detections"
     )
+    # Echo SQL to stdout. Off in prod; flip on for migration / query debugging.
+    DB_ECHO: bool = False
 
     # ---- Rate limiting (consumed Day 3) ----
     RATE_LIMIT_PER_MINUTE: int = Field(default=30, ge=1)

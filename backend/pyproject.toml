@@ -25,9 +25,9 @@ dependencies = [
     "numpy>=1.26,<2.0",
 
     # ---- db (Day 2) ----
-    "SQLAlchemy[asyncio]>=2.0.30,<2.1",
-    "asyncpg>=0.29,<0.31",
-    "alembic>=1.13,<1.15",
+    "sqlalchemy[asyncio]>=2.0,<3.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
 
     # ---- rate limiting (Day 3) ----
     "slowapi>=0.1.9,<0.2",
