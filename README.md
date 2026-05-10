@@ -108,7 +108,7 @@ pytest
 
 ## Roadmap
 
-- [ ] Day 1: detection loop end-to-end (no DB)
+- [x] Day 1: detection loop end-to-end (no DB) — backend, frontend, dockerized backend, 19 unit tests
 - [ ] Day 2: persistence, `/roi`, structured logging, architecture diagram
 - [ ] Day 3: full test suite, hardening, release
 
