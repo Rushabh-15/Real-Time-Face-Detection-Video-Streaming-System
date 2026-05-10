@@ -2,13 +2,13 @@
 
 Real-time face detection over a WebSocket video stream. Webcam frames go in, annotated frames + ROI bounding boxes come back, ROIs are persisted to Postgres for time-range queries.
 
-> **Status:** in development (3-day take-home build). See [Roadmap](#roadmap).
+> **Status:** active take-home assignment implementation (Day 1 complete, Day 2 mostly complete, Day 3 planned).
 
 ---
 
 ## Quick start
 
-**Prerequisites**
+### Prerequisites
 
 - Docker 24+ and Docker Compose v2
 - A modern browser with webcam access (Chrome, Firefox, Safari)
@@ -22,12 +22,12 @@ docker compose up --build
 
 Then open <http://localhost:5173> and grant webcam permission.
 
-**Verify the backend independently**
+### Verify the backend independently
 
 - API docs (Swagger UI): <http://localhost:8000/api/v1/docs>
 - Health check: <http://localhost:8000/api/v1/health>
 
-**Tear down**
+### Tear down
 
 ```bash
 docker compose down -v
@@ -38,19 +38,19 @@ docker compose down -v
 ## What it does
 
 1. The React frontend captures webcam frames, JPEG-encodes them in a `<canvas>`, and ships them over a WebSocket.
-2. The FastAPI backend decodes each frame with Pillow, runs MediaPipe face detection (single face), draws the axis-aligned bounding box with `PIL.ImageDraw`, re-encodes to JPEG.
-3. The annotated frame + ROI JSON come back in the same WebSocket envelope — frame and box can't desync.
+2. The FastAPI backend decodes each frame with Pillow, runs MediaPipe face detection (single face), draws the axis-aligned bounding box with `PIL.ImageDraw`, and re-encodes to JPEG.
+3. The annotated frame + ROI JSON come back in the same WebSocket envelope — frame and box cannot desync.
 4. ROIs are sampled and persisted to PostgreSQL for time-range queries via `GET /api/v1/roi`.
 
-> **No `opencv-python`.** All image work is Pillow + numpy + MediaPipe.
+> **No `opencv-python`.** All image processing is handled with Pillow + numpy + MediaPipe.
 
 ---
 
 ## Architecture
 
-> *Diagram coming Day 2 → `docs/architecture.png`.*
+> *Architecture diagram planned for Day 3 (`docs/architecture.png`).*
 
-```
+```text
 [Browser webcam] --JPEG/WS--> [FastAPI WS handler]
                                      |
                                [pipeline service]
@@ -66,17 +66,28 @@ docker compose down -v
 
 ## API contract
 
-> *Filled in Day 2 — OpenAPI is auto-generated at `/api/v1/docs`.*
+OpenAPI docs are auto-generated at `/api/v1/docs`.
 
-- `GET  /api/v1/health` — liveness
-- `WS   /api/v1/ws/face-stream` — bidirectional: send JPEG bytes, receive `{frame, roi}` envelope
-- `GET  /api/v1/roi?session_id=<uuid>&since=<iso8601>&limit=<int>` — paginated ROI history
+- `GET  /api/v1/health`
+  - Liveness/health endpoint
+
+- `WS /api/v1/ws/face-stream`
+  - Bidirectional WebSocket endpoint
+  - Client sends JPEG frames
+  - Server returns `{frame, roi}` envelope
+
+- `GET /api/v1/roi`
+  - Query persisted ROI history
+  - Supports:
+    - `session_id`
+    - `since`
+    - `limit`
 
 ---
 
 ## Project structure
 
-```
+```text
 backend/    FastAPI app, MediaPipe detector, SQLAlchemy + Alembic
 frontend/   React 18 + Vite + TypeScript
 docs/       Architecture diagram, screenshots
@@ -86,12 +97,25 @@ docs/       Architecture diagram, screenshots
 
 ## Design decisions
 
-> *Expanded Day 2.* Each decision will document the alternatives considered.
+### Single bidirectional WebSocket
 
-- **One bidirectional WebSocket** instead of MJPEG + REST polling — frame/ROI sync is free.
-- **PostgreSQL** for ROI persistence — structured, time-indexed, range-queried; relational fits cleanly.
-- **MediaPipe** instead of dlib / face_recognition — CPU-only, fast, no native build pain in Docker.
-- **Sampled persistence** (1-of-N frames, configurable) — 30 rows/sec is wasteful; sampling is a knob, not a hardcode.
+A single WebSocket keeps frame transport and ROI metadata synchronized without requiring polling or multiple transport layers.
+
+### PostgreSQL for ROI persistence
+
+ROI data is structured, timestamped, and query-oriented. PostgreSQL provides clean indexing and range-query support.
+
+### MediaPipe over dlib / face_recognition
+
+MediaPipe provides CPU-friendly inference with significantly easier Docker setup and fewer native dependency issues.
+
+### Sampled persistence
+
+Persisting every frame is unnecessary and expensive. Sampling persistence frequency keeps storage practical while remaining configurable.
+
+### Pillow instead of OpenCV
+
+The project intentionally avoids `opencv-python` to reduce image-processing overhead and native dependency complexity.
 
 ---
 
@@ -102,21 +126,57 @@ cd backend
 pytest
 ```
 
-> *Test layout finalized Day 3.*
+> Current tests focus primarily on the detection pipeline and backend functionality.
+
+---
+
+## Current implementation status
+
+### Completed
+
+- End-to-end realtime webcam → WebSocket → detection → annotated frame pipeline
+- FastAPI backend with MediaPipe face detection
+- React/Vite frontend webcam streaming
+- ROI extraction and persistence pipeline
+- PostgreSQL integration
+- Dockerized local development setup
+- Health endpoint + Swagger docs
+- Initial SQLAlchemy + Alembic setup
+- Unit tests for detection pipeline (19 tests)
+
+### Remaining Day 2 items
+
+| Item | Status | Notes |
+|---|---|---|
+| Frontend `session_id` handshake | Remaining | Small integration task (~20 min) |
+| Client-side overlay sanity check | Optional | Visual polish task |
+| Global/custom exception handlers | Partially complete | WebSocket handler implemented; REST/global handler pending |
+| JSON logging polish | Deferred | Existing Loguru setup already structured |
+
+### Planned Day 3 work
+
+- Full integration test suite
+- Alembic migration hardening
+- Production-oriented exception handling
+- Architecture diagram
+- Additional documentation/screenshots
+- Performance cleanup and release polish
+
+The repository reflects incremental development with commits preserved throughout the implementation process.
 
 ---
 
 ## Roadmap
 
-- [x] Day 1: detection loop end-to-end (no DB) — backend, frontend, dockerized backend, 19 unit tests
-- [ ] Day 2: persistence, `/roi`, structured logging, architecture diagram
-- [ ] Day 3: full test suite, hardening, release
+- [x] Day 1: realtime detection loop, backend/frontend integration, Docker setup, initial tests
+- [~] Day 2: persistence layer, `/roi` API, logging, database integration
+- [ ] Day 3: integration tests, hardening, release polish
 
 ---
 
 ## AI usage
 
-This project was built with AI pair-programming. See [AI_USAGE.md](AI_USAGE.md) for the per-change log.
+This project was built with AI-assisted pair programming. Development decisions, prompts, and AI-assisted changes are documented in [AI_USAGE.md](AI_USAGE.md).
 
 ---
 
